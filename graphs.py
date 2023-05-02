@@ -58,8 +58,7 @@ graph_1 = px.bar(df_counts, x='type', y=['4-koma manga', 'Book', 'Card game', 'D
        'Light novel', 'Manga', 'Music', 'Novel', 'Original', 'Other',
        'Picture book', 'Radio', 'Unknown', 'Visual novel', 'Web manga'], title='Count of sources by type of show')
 
-# graph to display the relation between rating and some other columns
-# TODO add changes to visualize more columns using a callback function
+# graph 2
 graph_2 = px.strip(anime_df, x='score', y='rating', color='airing', custom_data=['title'], hover_data={'title': True})
 
 # Third graph
@@ -79,22 +78,28 @@ app.layout = html.Div(children=[
     html.H1(children='Charts about different Animes and Mangas'),
 
     html.Div([
-        "Input: ",
-        dcc.Input(id='my-input', value='Initial value', type='text')
-    ]),
 
-    html.Br(),
-
-    html.Div(id='my-output'),
-
-    dcc.Graph(
-        id='graph-1',
-        figure=graph_1
-    ),
+        dcc.Dropdown(
+                    id='dropdown-ratings',
+                    options=[
+                        {'label': 'Score', 'value': 'score'},
+                        {'label': 'Scored By', 'value': 'scored_by'},
+                        {'label': 'Rank', 'value': 'rank'},
+                        {'label': 'Popularity', 'value': 'popularity'},
+                        {'label': 'Members', 'value': 'members'},
+                        {'label': 'Favorites', 'value': 'favorites'}],
+                        value='score'),
 
     dcc.Graph(
         id='graph-2',
         figure=graph_2
+    )
+
+    ]),
+
+    dcc.Graph(
+        id='graph-1',
+        figure=graph_1
     ),
 
     dcc.Graph(
@@ -109,14 +114,27 @@ app.layout = html.Div(children=[
 
 ])
 
-
 @app.callback(
-    Output(component_id='my-output', component_property='children'),
-    Input(component_id='my-input', component_property='value')
-)
-def update_output_div(input_value):
-    return f'Output: {input_value}'
+    Output('graph-2', 'figure'),
+    Input('dropdown-ratings', 'value'))
 
+def update_graph(value):
+
+    if value == 'score':
+        graph_2.update_traces(x=anime_df['score'])
+    elif value == 'scored_by':
+        graph_2.update_traces(x=anime_df['scored_by'])
+    elif value == 'rank':
+        graph_2.update_traces(x=anime_df['rank'])
+    elif value == 'popularity':
+        graph_2.update_traces(x=anime_df['popularity'])
+    elif value == 'members':
+        graph_2.update_traces(x=anime_df['members'])
+    elif value == 'favorites':
+        graph_2.update_traces(x=anime_df['favorites'])
+
+    graph_2.update_layout(xaxis={'title': f'{value}'})
+    return graph_2
 
 
 if __name__ == '__main__':
