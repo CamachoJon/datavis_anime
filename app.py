@@ -5,81 +5,84 @@ from dash.dependencies import Input, Output
 import plotly.express as px
 import pandas as pd
 
-# Load the data into a pandas dataframe
-df = pd.read_csv('anime_revenue.csv')
+# Load the data
+df = pd.read_csv('anime_filtered.csv')
+df_revenue = pd.read_csv('anime_revenue.csv')
 
-# Define the app
+# Create the app
 app = dash.Dash(__name__)
 
 # Define the layout
 app.layout = html.Div([
-    html.H1("Anime Dataset"),
+    html.H1('Anime Data Dashboard'),
     html.Div([
-        html.Div([
-            html.Label("Feature to Plot"),
-            dcc.Dropdown(
-                id="feature-to-plot",
-                options=[{"label": col, "value": col} for col in df.columns],
-                value="Revenue (Millions)"
-            )
-        ], className="six columns"),
-        html.Div([
-            html.Label("Feature to Split"),
-            dcc.Dropdown(
-                id="feature-to-split",
-                options=[{"label": col, "value": col} for col in df.columns],
-                value="source"
-            )
-        ], className="six columns"),
-    ], className="row"),
+        html.H2('Treemap'),
+        dcc.Graph(id='treemap'),
+        html.Label('X variable'),
+        dcc.Dropdown(
+            id='x-var',
+            options=[{'label': col, 'value': col} for col in df.select_dtypes('object').columns],
+            value='status'
+        ),
+        html.Label('Y variable'),
+        dcc.Dropdown(
+            id='y-var',
+            options=[{'label': col, 'value': col} for col in df.select_dtypes('object').columns],
+            value='source'
+        )
+    ]),
     html.Div([
-        dcc.Graph(id="histogram"),
-    ], className="six columns"),
-    html.Div([
-        dcc.Graph(id="top-10-barplot"),
-    ], className="six columns"),
+        html.H2('Histogram'),
+        dcc.Graph(id='histogram'),
+        html.Label('Feature to plot'),
+        dcc.Dropdown(
+            id='feature-to-plot',
+            options=[{'label': col, 'value': col} for col in df_revenue.columns],
+            value='Revenue (Millions)'
+        ),
+        html.Label('Feature to split'),
+        dcc.Dropdown(
+            id='feature-to-split',
+            options=[{'label': col, 'value': col} for col in df_revenue.columns],
+            value='source'
+        )
+    ])
 ])
 
 # Define the callbacks
 @app.callback(
-    [Output("histogram", "figure"), Output("top-10-barplot", "figure")],
-    [Input("feature-to-plot", "value"), Input("feature-to-split", "value")]
+    Output('treemap', 'figure'),
+    Input('x-var', 'value'),
+    Input('y-var', 'value')
 )
-def update_plots(feature_to_plot, feature_to_split):
-    # Create the histogram plot
-    histogram = px.histogram(
-        df,
-        x=feature_to_plot,
-        color=feature_to_split,
-        nbins=50,
-        histnorm='probability density',
-        color_discrete_sequence=px.colors.sequential.Agsunset
+def update_treemap(x_var, y_var):
+    grouped_df = df.groupby([y_var, x_var]).size().reset_index(name='Count')
+    graph_6 = px.treemap(
+        grouped_df,
+        path=[y_var, x_var],
+        values='Count',
+        color='Count',
+        color_continuous_scale=px.colors.sequential.Agsunset)
+    graph_6.update_layout(
+        title=f'Treemap of {x_var} and {y_var}',
     )
-    histogram.update_layout(
+    return graph_6
+
+@app.callback(
+    Output('histogram', 'figure'),
+    Input('feature-to-plot', 'value'),
+    Input('feature-to-split', 'value')
+)
+def update_histogram(feature_to_plot, feature_to_split):
+    graph_7 = px.histogram(df_revenue, x=feature_to_plot, color=feature_to_split, nbins=50, histnorm='probability density', 
+                       color_discrete_sequence=px.colors.sequential.Agsunset)
+    graph_7.update_layout(
         title=f'Histogram of {feature_to_plot} splitting by {feature_to_split}',
         xaxis_title=feature_to_plot,
-        yaxis_title=feature_to_split
+        yaxis_title=feature_to_split,
     )
-
-    # Create the top 10 barplot
-    top10_df = df.sort_values(feature_to_plot, ascending=False).head(10)
-    top10_barplot = px.bar(
-        top10_df,
-        x='title',
-        y=feature_to_plot,
-        text=feature_to_plot,
-        hover_data=[feature_to_plot],
-        color_continuous_scale=px.colors.sequential.Agsunset
-    )
-    top10_barplot.update_layout(
-        title=f'Top 10 Animes by {feature_to_plot}',
-        xaxis_title='Anime Title',
-        yaxis_title=feature_to_plot,
-        yaxis_tickformat='$,.2f'
-    )
-
-    return histogram, top10_barplot
+    return graph_7
 
 # Run the app
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run_server(debug=True)
