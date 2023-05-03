@@ -17,7 +17,6 @@ app.layout = html.Div([
     html.H1('Anime Data Dashboard'),
     html.Div([
         html.H2('Treemap'),
-        dcc.Graph(id='treemap'),
         html.Label('X variable'),
         dcc.Dropdown(
             id='x-var',
@@ -29,11 +28,11 @@ app.layout = html.Div([
             id='y-var',
             options=[{'label': col, 'value': col} for col in df.select_dtypes('object').columns],
             value='source'
-        )
+        ),
+        dcc.Graph(id='treemap')
     ]),
     html.Div([
         html.H2('Histogram'),
-        dcc.Graph(id='histogram'),
         html.Label('Feature to plot'),
         dcc.Dropdown(
             id='feature-to-plot',
@@ -45,7 +44,8 @@ app.layout = html.Div([
             id='feature-to-split',
             options=[{'label': col, 'value': col} for col in df_revenue.columns],
             value='source'
-        )
+        ),
+        dcc.Graph(id='histogram')
     ])
 ])
 
