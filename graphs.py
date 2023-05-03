@@ -70,17 +70,17 @@ scrapped_df = web_scraper(anime_df)
 
 # Graph #1
 df_counts = pd.pivot_table(anime_df, index='type', columns='source', aggfunc='size', fill_value=0).reset_index()
-graph_1 = px.bar(df_counts, x='type', y=SOURCES, title='Count of sources by type of show')
+graph_1 = px.bar(df_counts, x='type', y=SOURCES, title='Count of sources by type of show', color_discrete_sequence= px.colors.sequential.Agsunset)
 
 # Graph #2
-graph_2 = px.strip(anime_df, x='score', y='rating', color='airing', custom_data=['title'], hover_data={'title': True})
+graph_2 = px.strip(anime_df, x='score', y='rating', color='airing', custom_data=['title'], hover_data={'title': True}, color_discrete_sequence= px.colors.sequential.Agsunset)
 
 # Graph #3
 graph_3 = px.violin(anime_df, y="score", x="airing", color="status", box=True,
-                    points="all", hover_data=anime_df.columns)
+                    points="all", hover_data=anime_df.columns, color_discrete_sequence= px.colors.sequential.Agsunset)
 
 # Graph #4
-graph_4 = px.scatter(scrapped_df, x = "score", y = "scored_by", size = "Sales (Million)", color = "source",
+graph_4 = px.scatter(scrapped_df, x = "score", y = "scored_by", size = "Sales (Million)", color = "episodes",
            hover_name = "title", log_x = True, size_max = 40)
 
 # Graph #5
@@ -185,6 +185,7 @@ def update_graph_sales(value):
 )
 
 def update_bar_graph(value):
+    graph_5.update_yaxes(title_text=value)
     graph_5.update_traces(y=rating_grading_df[value])
     return graph_5
 
