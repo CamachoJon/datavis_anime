@@ -76,18 +76,26 @@ graph_1 = px.bar(df_counts, x='type', y=SOURCES, title='Count of sources by type
 # Graph #2
 graph_2 = px.strip(anime_df, x='score', y='rating', color='airing', custom_data=['title'], hover_data={'title': True}, color_discrete_sequence= px.colors.sequential.Agsunset)
 
+graph_2.update_layout(title='Scatter of score and airing')
+
 # Graph #3
 graph_3 = px.violin(anime_df, y="score", x="airing", color="status", box=True,
                     points="all", hover_data=anime_df.columns, color_discrete_sequence= px.colors.sequential.Agsunset)
+
+graph_3.update_layout(title='Violinplot by airing and score')
 
 # Graph #4
 graph_4 = px.scatter(scrapped_df, x = "score", y = "scored_by", size = "Sales (Million)", color = "episodes",
            hover_name = "title", log_x = True, size_max = 40)
 
+graph_4.update_layout(title='Scatter of scored_by by Sales')
+
 # Graph #5
 
 rating_grading_df = discrete_intervals(anime_df)
 graph_5 = px.bar(rating_grading_df, x='rating', y='5-6')
+
+graph_5.update_layout(title='Barplot of rating')
 
 # Graph 8
 feature = 'Sales (Million)'
@@ -100,6 +108,13 @@ graph_8 = px.bar(
     hover_data=[feature, 'Author(s)', 'genre'],
     color_continuous_scale=px.colors.sequential.Agsunset)
 
+graph_8.update_layout(
+    title=f'Top 10 Animes by {feature}',
+    xaxis_title='Anime Title',
+    yaxis_title=feature,
+    yaxis_tickformat='$,.2f'
+)
+
 # Graph 9
 graph_9 = px.scatter(
     anime_df,
@@ -109,6 +124,12 @@ graph_9 = px.scatter(
     hover_data=['title'],
     opacity=0.7,
     color_discrete_sequence=px.colors.sequential.Agsunset
+)
+
+graph_9.update_layout(
+    title=f'Scatter of members and score, colored by type',
+    xaxis_title='members',
+    yaxis_title='score',
 )
 
 # Graph 10
@@ -133,8 +154,49 @@ for season in seasons:
         )
     ))
 
+graph_10.update_layout(
+    title='Number of Animes Premiered by Season',
+    xaxis_title='Year',
+    yaxis_title='Number of Animes',
+    yaxis_tickformat=',d'
+)
+
 app.layout = html.Div(children=[
     html.H1(children='Charts about different Animes and Mangas'),
+
+    html.Div([
+        html.Label('X variable'),
+        dcc.Dropdown(id='dropdown-sales',
+                    options=[{'label': 'Sales', 'value': 'sales'},
+                             {'label': 'Sales per Volume', 'value': 'sales_volume'}],
+                             value='sales'),
+
+        dcc.Graph(
+            id='graph-4',
+            figure=graph_4
+        )
+    ]),
+
+    dcc.Graph(
+        id='graph-8',
+        figure=graph_8
+    ),
+
+    html.Div([
+        html.Label('Feature to plot'),
+        dcc.Dropdown(
+            id='feature-to-plot',
+            options=[{'label': col, 'value': col} for col in scrapped_df.select_dtypes(['int64', 'float64']).columns],
+            value='Sales (Million)'
+        ),
+        html.Label('Feature to split'),
+        dcc.Dropdown(
+            id='feature-to-split',
+            options=[{'label': col, 'value': col} for col in scrapped_df.select_dtypes('object').columns],
+            value='source'
+        ),
+        dcc.Graph(id='histogram')
+    ]),
 
     dcc.Graph(
         id='graph-1',
@@ -142,7 +204,23 @@ app.layout = html.Div(children=[
     ),
 
     html.Div([
+        html.Label('X variable'),
+        dcc.Dropdown(
+            id='x-var',
+            options=[{'label': col, 'value': col} for col in anime_df.select_dtypes('object').columns],
+            value='status'
+        ),
+        html.Label('Y variable'),
+        dcc.Dropdown(
+            id='y-var',
+            options=[{'label': col, 'value': col} for col in anime_df.select_dtypes('object').columns],
+            value='source'
+        ),
+        dcc.Graph(id='treemap')
+    ]),
 
+    html.Div([
+        html.Label('X variable'),
         dcc.Dropdown(
                     id='dropdown-ratings',
                     options=[
@@ -166,20 +244,13 @@ app.layout = html.Div(children=[
         figure=graph_3
     ),
 
-    html.Div([
-        dcc.Dropdown(id='dropdown-sales',
-                    options=[{'label': 'Sales', 'value': 'sales'},
-                             {'label': 'Sales per Volume', 'value': 'sales_volume'}],
-                             value='sales'),
-
-        dcc.Graph(
-            id='graph-4',
-            figure=graph_4
-        )
-    ]),
+    dcc.Graph(
+        id='graph-10',
+        figure=graph_10
+    ),
 
     html.Div([
-
+        html.Label('Rating interval'),
         dcc.Dropdown(id='dropdown-count-scores',
                     options=[
                         {'label': '0-1', 'value': '0-1'},
@@ -200,53 +271,9 @@ app.layout = html.Div(children=[
         )
     ]),
 
-    html.Div([
-        html.H2('Treemap'),
-        html.Label('X variable'),
-        dcc.Dropdown(
-            id='x-var',
-            options=[{'label': col, 'value': col} for col in anime_df.select_dtypes('object').columns],
-            value='status'
-        ),
-        html.Label('Y variable'),
-        dcc.Dropdown(
-            id='y-var',
-            options=[{'label': col, 'value': col} for col in anime_df.select_dtypes('object').columns],
-            value='source'
-        ),
-        dcc.Graph(id='treemap')
-    ]),
-
-    html.Div([
-        html.H2('Histogram'),
-        html.Label('Feature to plot'),
-        dcc.Dropdown(
-            id='feature-to-plot',
-            options=[{'label': col, 'value': col} for col in scrapped_df.columns],
-            value='Revenue (Millions)'
-        ),
-        html.Label('Feature to split'),
-        dcc.Dropdown(
-            id='feature-to-split',
-            options=[{'label': col, 'value': col} for col in scrapped_df.columns],
-            value='source'
-        ),
-        dcc.Graph(id='histogram')
-    ]),
-
-    dcc.Graph(
-        id='graph-8',
-        figure=graph_8
-    ),
-
     dcc.Graph(
         id='graph-9',
         figure=graph_9
-    ),
-
-    dcc.Graph(
-        id='graph-10',
-        figure=graph_10
     )
 
 ])
