@@ -1,0 +1,15 @@
+.main-div{
+    padding: 5em;
+    background-image: -webkit-linear-gradient(top, white, salmon);
+    background-image: linear-gradient(to bottom, white, salmon);
+}
+
+.chart{
+    border-radius: 25%;
+    border-color: black;
+    border: 10px;
+}
+
+.margin-class{
+    margin-bottom: 40px;
+}

@@ -13,8 +13,9 @@ import plotly.graph_objs as go
 app = Dash(__name__)
 
 SOURCES = ['4-koma manga', 'Book', 'Card game', 'Digital manga', 'Game',
-       'Light novel', 'Manga', 'Music', 'Novel', 'Original', 'Other',
-       'Picture book', 'Radio', 'Unknown', 'Visual novel', 'Web manga']
+           'Light novel', 'Manga', 'Music', 'Novel', 'Original', 'Other',
+           'Picture book', 'Radio', 'Unknown', 'Visual novel', 'Web manga']
+
 
 def scraper_modifier(anime_df, scraped_df):
 
@@ -28,14 +29,17 @@ def scraper_modifier(anime_df, scraped_df):
 
     final_anime['Sales (Million)'] = final_anime['Approximate sales'].str.extract(
         r'^([\d\.]+)', expand=False)
-    
+
     final_anime['Average Sales Per Volume (Million)'] = final_anime['Average sales per volume'].str.extract(
         r'^([\d\.]+)', expand=False)
-    
-    final_anime['Sales (Million)'] = final_anime['Sales (Million)'].astype('float')
-    final_anime['Average Sales Per Volume (Million)'] = final_anime['Average Sales Per Volume (Million)'].astype('float') * 100
-    
+
+    final_anime['Sales (Million)'] = final_anime['Sales (Million)'].astype(
+        'float')
+    final_anime['Average Sales Per Volume (Million)'] = final_anime['Average Sales Per Volume (Million)'].astype(
+        'float') * 100
+
     return final_anime
+
 
 def web_scraper(anime_df):
 
@@ -57,32 +61,40 @@ def web_scraper(anime_df):
 
     return scraped_df
 
-def discrete_intervals(anime_df):
-    anime_df['score_bin'] = pd.cut(anime_df['score'], bins=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 
-    rating_grading_df = anime_df.pivot_table(index='rating', columns='score_bin', values='title', aggfunc='count').reset_index()
-    rating_grading_df.columns = ['rating', '0-1', '1-2', '2-3', '3-4', '4-5', '5-6', '6-7', '7-8', '8-9', '9-10']
+def discrete_intervals(anime_df):
+    anime_df['score_bin'] = pd.cut(anime_df['score'], bins=[
+                                   0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+
+    rating_grading_df = anime_df.pivot_table(
+        index='rating', columns='score_bin', values='title', aggfunc='count').reset_index()
+    rating_grading_df.columns = [
+        'rating', '0-1', '1-2', '2-3', '3-4', '4-5', '5-6', '6-7', '7-8', '8-9', '9-10']
 
     return rating_grading_df
+
 
 # creation of dataframes
 anime_df = pd.read_csv('anime_filtered.csv', sep=',')
 scrapped_df = web_scraper(anime_df)
 
 # Graph #1
-df_counts = pd.pivot_table(anime_df, index='type', columns='source', aggfunc='size', fill_value=0).reset_index()
-graph_1 = px.bar(df_counts, x='type', y=SOURCES, title='Count of sources by type of show', color_discrete_sequence= px.colors.sequential.Agsunset)
+df_counts = pd.pivot_table(
+    anime_df, index='type', columns='source', aggfunc='size', fill_value=0).reset_index()
+graph_1 = px.bar(df_counts, x='type', y=SOURCES, title='Count of sources by type of show',
+                 color_discrete_sequence=px.colors.sequential.Agsunset)
 
 # Graph #2
-graph_2 = px.strip(anime_df, x='score', y='rating', color='airing', custom_data=['title'], hover_data={'title': True}, color_discrete_sequence= px.colors.sequential.Agsunset)
+graph_2 = px.strip(anime_df, x='score', y='rating', color='airing', custom_data=[
+                   'title'], hover_data={'title': True}, color_discrete_sequence=px.colors.sequential.Agsunset)
 
 # Graph #3
 graph_3 = px.violin(anime_df, y="score", x="airing", color="status", box=True,
-                    points="all", hover_data=anime_df.columns, color_discrete_sequence= px.colors.sequential.Agsunset)
+                    points="all", hover_data=anime_df.columns, color_discrete_sequence=px.colors.sequential.Agsunset)
 
 # Graph #4
-graph_4 = px.scatter(scrapped_df, x = "score", y = "scored_by", size = "Sales (Million)", color = "episodes",
-           hover_name = "title", log_x = True, size_max = 40)
+graph_4 = px.scatter(scrapped_df, x="score", y="scored_by", size="Sales (Million)", color="episodes",
+                     hover_name="title", log_x=True, size_max=40)
 
 # Graph #5
 
@@ -113,10 +125,12 @@ graph_9 = px.scatter(
 
 # Graph 10
 anime_df['Year'] = anime_df['premiered'].str.extract('(\d{4})')
-anime_df['Season'] = anime_df['premiered'].str.extract('(Winter|Spring|Summer|Fall)')
+anime_df['Season'] = anime_df['premiered'].str.extract(
+    '(Winter|Spring|Summer|Fall)')
 seasons = ['Winter', 'Spring', 'Summer', 'Fall']
 
-premieres = anime_df.groupby(['Year', 'Season']).size().reset_index(name='Count')
+premieres = anime_df.groupby(
+    ['Year', 'Season']).size().reset_index(name='Count')
 
 graph_10 = go.Figure()
 
@@ -133,163 +147,184 @@ for season in seasons:
         )
     ))
 
-app.layout = html.Div(children=[
-    html.H1(children='Charts about different Animes and Mangas'),
-
-    dcc.Graph(
-        id='graph-1',
-        figure=graph_1
-    ),
-
-    html.Div([
-
-        dcc.Dropdown(
-                    id='dropdown-ratings',
-                    options=[
-                        {'label': 'Score', 'value': 'score'},
-                        {'label': 'Scored By', 'value': 'scored_by'},
-                        {'label': 'Rank', 'value': 'rank'},
-                        {'label': 'Popularity', 'value': 'popularity'},
-                        {'label': 'Members', 'value': 'members'},
-                        {'label': 'Favorites', 'value': 'favorites'}],
-                        value='score'),
-
-    dcc.Graph(
-        id='graph-2',
-        figure=graph_2
-    )
-
-    ]),
-
-    dcc.Graph(
-        id='graph-3',
-        figure=graph_3
-    ),
-
-    html.Div([
-        dcc.Dropdown(id='dropdown-sales',
-                    options=[{'label': 'Sales', 'value': 'sales'},
-                             {'label': 'Sales per Volume', 'value': 'sales_volume'}],
-                             value='sales'),
+app.layout = html.Div(
+    className='main-div',
+    children=[
+        html.H1(children='Charts about different Animes and Mangas'),
 
         dcc.Graph(
-            id='graph-4',
-            figure=graph_4
-        )
-    ]),
+            className='margin-class',
+            id='graph-1',
+            figure=graph_1
+        ),
 
-    html.Div([
+        html.Div(
+            className='margin-class',
+            children=[dcc.Dropdown(
+                id='dropdown-ratings',
+                options=[
+                    {'label': 'Score', 'value': 'score'},
+                    {'label': 'Scored By', 'value': 'scored_by'},
+                    {'label': 'Rank', 'value': 'rank'},
+                    {'label': 'Popularity', 'value': 'popularity'},
+                    {'label': 'Members', 'value': 'members'},
+                    {'label': 'Favorites', 'value': 'favorites'}],
+                value='score'),
 
-        dcc.Dropdown(id='dropdown-count-scores',
-                    options=[
-                        {'label': '0-1', 'value': '0-1'},
-                        {'label': '1-2', 'value': '1-2'},
-                        {'label': '2-3', 'value': '2-3'},
-                        {'label': '3-4', 'value': '3-4'},
-                        {'label': '4-5', 'value': '4-5'},
-                        {'label': '5-6', 'value': '5-6'},
-                        {'label': '6-7', 'value': '6-7'},
-                        {'label': '7-8', 'value': '7-8'},
-                        {'label': '8-9', 'value': '8-9'},
-                        {'label': '9-10', 'value': '9-10'}],
-                        value='5-6'),
+                dcc.Graph(
+                className='chart',
+                id='graph-2',
+                figure=graph_2
+            )
+
+            ]),
 
         dcc.Graph(
-            id='graph-5',
-            figure=graph_5
+            className='margin-class',
+            id='graph-3',
+            figure=graph_3
+        ),
+
+        html.Div(
+            className='margin-class',
+            children=[dcc.Dropdown(id='dropdown-sales',
+                                   options=[{'label': 'Sales', 'value': 'sales'},
+                                            {'label': 'Sales per Volume', 'value': 'sales_volume'}],
+                                   value='sales'),
+
+                      dcc.Graph(
+                id='graph-4',
+                figure=graph_4
+            )
+            ]),
+
+        html.Div(
+            className='margin-class',
+            children=[dcc.Dropdown(id='dropdown-count-scores',
+                                   options=[
+                                       {'label': '0-1', 'value': '0-1'},
+                                       {'label': '1-2', 'value': '1-2'},
+                                       {'label': '2-3', 'value': '2-3'},
+                                       {'label': '3-4', 'value': '3-4'},
+                                       {'label': '4-5', 'value': '4-5'},
+                                       {'label': '5-6', 'value': '5-6'},
+                                       {'label': '6-7', 'value': '6-7'},
+                                       {'label': '7-8', 'value': '7-8'},
+                                       {'label': '8-9', 'value': '8-9'},
+                                       {'label': '9-10', 'value': '9-10'}],
+                                   value='5-6'),
+
+                      dcc.Graph(
+                id='graph-5',
+                figure=graph_5
+            )
+            ]),
+
+        html.Div(
+            className='margin-class',
+            children=[
+                html.H2('Treemap'),
+                html.Label('X variable'),
+                dcc.Dropdown(
+                    id='x-var',
+                    options=[{'label': col, 'value': col}
+                             for col in anime_df.select_dtypes('object').columns],
+                    value='status'
+                ),
+                html.Label('Y variable'),
+                dcc.Dropdown(
+                    id='y-var',
+                    options=[{'label': col, 'value': col}
+                             for col in anime_df.select_dtypes('object').columns],
+                    value='source'
+                ),
+                dcc.Graph(id='treemap')
+            ]),
+
+        html.Div(
+            className='margin-class',
+            children=[
+                html.H2('Histogram'),
+                html.Label('Feature to plot'),
+                dcc.Dropdown(
+                    id='feature-to-plot',
+                    options=[{'label': col, 'value': col}
+                             for col in scrapped_df.columns],
+                    value='Revenue (Millions)'
+                ),
+                html.Label('Feature to split'),
+                dcc.Dropdown(
+                    id='feature-to-split',
+                    options=[{'label': col, 'value': col}
+                             for col in scrapped_df.columns],
+                    value='source'
+                ),
+                dcc.Graph(id='histogram')
+            ]),
+
+        dcc.Graph(
+            className='margin-class',
+            id='graph-8',
+            figure=graph_8
+        ),
+
+        dcc.Graph(
+            className='margin-class',
+            id='graph-9',
+            figure=graph_9
+        ),
+
+        dcc.Graph(
+            className='margin-class',
+            id='graph-10',
+            figure=graph_10
         )
-    ]),
 
-    html.Div([
-        html.H2('Treemap'),
-        html.Label('X variable'),
-        dcc.Dropdown(
-            id='x-var',
-            options=[{'label': col, 'value': col} for col in anime_df.select_dtypes('object').columns],
-            value='status'
-        ),
-        html.Label('Y variable'),
-        dcc.Dropdown(
-            id='y-var',
-            options=[{'label': col, 'value': col} for col in anime_df.select_dtypes('object').columns],
-            value='source'
-        ),
-        dcc.Graph(id='treemap')
-    ]),
+    ])
 
-    html.Div([
-        html.H2('Histogram'),
-        html.Label('Feature to plot'),
-        dcc.Dropdown(
-            id='feature-to-plot',
-            options=[{'label': col, 'value': col} for col in scrapped_df.columns],
-            value='Revenue (Millions)'
-        ),
-        html.Label('Feature to split'),
-        dcc.Dropdown(
-            id='feature-to-split',
-            options=[{'label': col, 'value': col} for col in scrapped_df.columns],
-            value='source'
-        ),
-        dcc.Graph(id='histogram')
-    ]),
-
-    dcc.Graph(
-        id='graph-8',
-        figure=graph_8
-    ),
-
-    dcc.Graph(
-        id='graph-9',
-        figure=graph_9
-    ),
-
-    dcc.Graph(
-        id='graph-10',
-        figure=graph_10
-    )
-
-])
 
 @app.callback(
     Output('graph-2', 'figure'),
     Input('dropdown-ratings', 'value'))
-
 def update_graph(value):
     graph_2.update_traces(x=anime_df[value])
     graph_2.update_layout(xaxis={'title': f'{value}'})
     return graph_2
 
+
 @app.callback(
     Output('graph-4', 'figure'),
     Input('dropdown-sales', 'value')
 )
-
 def update_graph_sales(value):
     if value == 'sales':
         graph_4.update_traces(marker=dict(size=scrapped_df['Sales (Million)']))
     elif value == 'sales_volume':
-        graph_4.update_traces(marker=dict(size=scrapped_df['Average Sales Per Volume (Million)']))
+        graph_4.update_traces(marker=dict(
+            size=scrapped_df['Average Sales Per Volume (Million)']))
 
     graph_4.update_layout(xaxis={'title': f'{value}'})
     return graph_4
+
 
 @app.callback(
     Output('graph-5', 'figure'),
     Input('dropdown-count-scores', 'value')
 )
-
 def update_bar_graph(value):
     graph_5.update_yaxes(title_text=value)
     graph_5.update_traces(y=rating_grading_df[value])
     return graph_5
+
+
 @app.callback(
     Output('treemap', 'figure'),
     Input('x-var', 'value'),
     Input('y-var', 'value')
 )
 def update_treemap(x_var, y_var):
-    grouped_df = anime_df.groupby([y_var, x_var]).size().reset_index(name='Count')
+    grouped_df = anime_df.groupby(
+        [y_var, x_var]).size().reset_index(name='Count')
     graph_6 = px.treemap(
         grouped_df,
         path=[y_var, x_var],
@@ -301,15 +336,15 @@ def update_treemap(x_var, y_var):
     )
     return graph_6
 
+
 @app.callback(
     Output('histogram', 'figure'),
     Input('feature-to-plot', 'value'),
     Input('feature-to-split', 'value')
 )
-
 def update_histogram(feature_to_plot, feature_to_split):
-    graph_7 = px.histogram(scrapped_df  , x=feature_to_plot, color=feature_to_split, nbins=50, histnorm='probability density', 
-                       color_discrete_sequence=px.colors.sequential.Agsunset)
+    graph_7 = px.histogram(scrapped_df, x=feature_to_plot, color=feature_to_split, nbins=50, histnorm='probability density',
+                           color_discrete_sequence=px.colors.sequential.Agsunset)
     graph_7.update_layout(
         title=f'Histogram of {feature_to_plot} splitting by {feature_to_split}',
         xaxis_title=feature_to_plot,
