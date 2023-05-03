@@ -8,6 +8,7 @@ import requests
 import pandas as pd
 from bs4 import BeautifulSoup
 import statsmodels.api as sm
+import plotly.graph_objs as go
 
 app = Dash(__name__)
 
@@ -84,8 +85,53 @@ graph_4 = px.scatter(scrapped_df, x = "score", y = "scored_by", size = "Sales (M
            hover_name = "title", log_x = True, size_max = 40)
 
 # Graph #5
+
 rating_grading_df = discrete_intervals(anime_df)
 graph_5 = px.bar(rating_grading_df, x='rating', y='5-6')
+
+# Graph 8
+feature = 'Sales (Million)'
+top10_df = scrapped_df.sort_values(feature, ascending=False).head(10)
+
+graph_8 = px.bar(
+    top10_df, x='title', y=feature,
+    text=feature,
+    custom_data=[feature, 'Author(s)', 'genre'],
+    hover_data=[feature, 'Author(s)', 'genre'],
+    color_continuous_scale=px.colors.sequential.Agsunset)
+
+# Graph 9
+graph_9 = px.scatter(
+    anime_df,
+    x='members',
+    y='score',
+    color='type',
+    hover_data=['title'],
+    opacity=0.7,
+    color_discrete_sequence=px.colors.sequential.Agsunset
+)
+
+# Graph 10
+anime_df['Year'] = anime_df['premiered'].str.extract('(\d{4})')
+anime_df['Season'] = anime_df['premiered'].str.extract('(Winter|Spring|Summer|Fall)')
+seasons = ['Winter', 'Spring', 'Summer', 'Fall']
+
+premieres = anime_df.groupby(['Year', 'Season']).size().reset_index(name='Count')
+
+graph_10 = go.Figure()
+
+for season in seasons:
+    season_data = premieres[premieres['Season'] == season]
+    graph_10.add_trace(go.Scatter(
+        x=season_data['Year'],
+        y=season_data['Count'],
+        mode='lines+markers',
+        name=season,
+        line=dict(
+            color=px.colors.sequential.Agsunset[seasons.index(season)],
+            width=3
+        )
+    ))
 
 app.layout = html.Div(children=[
     html.H1(children='Charts about different Animes and Mangas'),
@@ -152,7 +198,56 @@ app.layout = html.Div(children=[
             id='graph-5',
             figure=graph_5
         )
-    ])
+    ]),
+
+    html.Div([
+        html.H2('Treemap'),
+        html.Label('X variable'),
+        dcc.Dropdown(
+            id='x-var',
+            options=[{'label': col, 'value': col} for col in anime_df.select_dtypes('object').columns],
+            value='status'
+        ),
+        html.Label('Y variable'),
+        dcc.Dropdown(
+            id='y-var',
+            options=[{'label': col, 'value': col} for col in anime_df.select_dtypes('object').columns],
+            value='source'
+        ),
+        dcc.Graph(id='treemap')
+    ]),
+
+    html.Div([
+        html.H2('Histogram'),
+        html.Label('Feature to plot'),
+        dcc.Dropdown(
+            id='feature-to-plot',
+            options=[{'label': col, 'value': col} for col in scrapped_df.columns],
+            value='Revenue (Millions)'
+        ),
+        html.Label('Feature to split'),
+        dcc.Dropdown(
+            id='feature-to-split',
+            options=[{'label': col, 'value': col} for col in scrapped_df.columns],
+            value='source'
+        ),
+        dcc.Graph(id='histogram')
+    ]),
+
+    dcc.Graph(
+        id='graph-8',
+        figure=graph_8
+    ),
+
+    dcc.Graph(
+        id='graph-9',
+        figure=graph_9
+    ),
+
+    dcc.Graph(
+        id='graph-10',
+        figure=graph_10
+    )
 
 ])
 
@@ -188,6 +283,40 @@ def update_bar_graph(value):
     graph_5.update_yaxes(title_text=value)
     graph_5.update_traces(y=rating_grading_df[value])
     return graph_5
+@app.callback(
+    Output('treemap', 'figure'),
+    Input('x-var', 'value'),
+    Input('y-var', 'value')
+)
+def update_treemap(x_var, y_var):
+    grouped_df = anime_df.groupby([y_var, x_var]).size().reset_index(name='Count')
+    graph_6 = px.treemap(
+        grouped_df,
+        path=[y_var, x_var],
+        values='Count',
+        color='Count',
+        color_continuous_scale=px.colors.sequential.Agsunset)
+    graph_6.update_layout(
+        title=f'Treemap of {x_var} and {y_var}',
+    )
+    return graph_6
+
+@app.callback(
+    Output('histogram', 'figure'),
+    Input('feature-to-plot', 'value'),
+    Input('feature-to-split', 'value')
+)
+
+def update_histogram(feature_to_plot, feature_to_split):
+    graph_7 = px.histogram(scrapped_df  , x=feature_to_plot, color=feature_to_split, nbins=50, histnorm='probability density', 
+                       color_discrete_sequence=px.colors.sequential.Agsunset)
+    graph_7.update_layout(
+        title=f'Histogram of {feature_to_plot} splitting by {feature_to_split}',
+        xaxis_title=feature_to_plot,
+        yaxis_title=feature_to_split,
+    )
+    return graph_7
+
 
 if __name__ == '__main__':
     app.run_server(debug=True)
