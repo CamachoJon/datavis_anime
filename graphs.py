@@ -11,83 +11,84 @@ import statsmodels.api as sm
 
 app = Dash(__name__)
 
-def webscrapping(anime_df):
+SOURCES = ['4-koma manga', 'Book', 'Card game', 'Digital manga', 'Game',
+       'Light novel', 'Manga', 'Music', 'Novel', 'Original', 'Other',
+       'Picture book', 'Radio', 'Unknown', 'Visual novel', 'Web manga']
 
-    # Send an HTTP request to the web page and get the HTML content
+def scraper_modifier(anime_df, scraped_df):
+
+    anime_df["Revenue (Millions)"] = 0.0
+    anime_df["Sales per volume"] = 0.0
+    anime_df['title_lower'] = anime_df['title'].str.lower()
+
+    scraped_df['title_lower'] = scraped_df['Manga series'].str.lower()
+
+    final_anime = anime_df.merge(scraped_df, on='title_lower', how='inner')
+
+    final_anime['Sales (Million)'] = final_anime['Approximate sales'].str.extract(
+        r'^([\d\.]+)', expand=False)
+    
+    final_anime['Average Sales Per Volume (Million)'] = final_anime['Average sales per volume'].str.extract(
+        r'^([\d\.]+)', expand=False)
+    
+    final_anime['Sales (Million)'] = final_anime['Sales (Million)'].astype('float')
+    final_anime['Average Sales Per Volume (Million)'] = final_anime['Average Sales Per Volume (Million)'].astype('float') * 100
+    
+    return final_anime
+
+def web_scraper(anime_df):
+
     url = 'https://en.wikipedia.org/wiki/List_of_best-selling_manga'
     response = requests.get(url)
     html = response.content
 
-    # Parse the HTML using Beautiful Soup and find all the tables with a given class
     soup = BeautifulSoup(html, 'html.parser')
     tables = soup.find_all('table', {'class': 'wikitable'})
 
-    # Convert each HTML table into a pandas DataFrame and store them in a list
     dfs = []
     for table in tables:
         df = pd.read_html(str(table))[0]
         df.columns.values[7] = 'Average sales per volume'
         dfs.append(df)
 
-    anime_df["Revenue (Millions)"] = 0.0
-    anime_df["Sales per volume"] = 0.0
+    final_scrap = pd.concat(dfs)
+    scraped_df = scraper_modifier(anime_df, final_scrap)
 
-    final_scrapp = pd.concat(dfs)
+    return scraped_df
 
-    anime_df['title_lower'] = anime_df['title'].str.lower()
-    final_scrapp['title_lower'] = final_scrapp['Manga series'].str.lower()
+def discrete_intervals(anime_df):
+    anime_df['score_bin'] = pd.cut(anime_df['score'], bins=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 
-    final_anime = anime_df.merge(final_scrapp, on='title_lower', how='inner')
+    rating_grading_df = anime_df.pivot_table(index='rating', columns='score_bin', values='title', aggfunc='count').reset_index()
+    rating_grading_df.columns = ['rating', '0-1', '1-2', '2-3', '3-4', '4-5', '5-6', '6-7', '7-8', '8-9', '9-10']
 
-    final_anime['Sales (Million)'] = final_anime['Approximate sales'].str.extract(
-        r'^([\d\.]+)', expand=False)
-    final_anime['Average Sales Per Volume (Million)'] = final_anime['Average sales per volume'].str.extract(
-        r'^([\d\.]+)', expand=False)
+    return rating_grading_df
 
-    return final_anime
-
-# assume you have a "long-form" data frame
-# see https://plotly.com/python/px-arguments/ for more options
+# creation of dataframes
 anime_df = pd.read_csv('anime_filtered.csv', sep=',')
-scrapped_df = webscrapping(anime_df)
+scrapped_df = web_scraper(anime_df)
 
-# use pivot_table method to create new dataframe with counts
+# Graph #1
 df_counts = pd.pivot_table(anime_df, index='type', columns='source', aggfunc='size', fill_value=0).reset_index()
+graph_1 = px.bar(df_counts, x='type', y=SOURCES, title='Count of sources by type of show')
 
-graph_1 = px.bar(df_counts, x='type', y=['4-koma manga', 'Book', 'Card game', 'Digital manga', 'Game',
-       'Light novel', 'Manga', 'Music', 'Novel', 'Original', 'Other',
-       'Picture book', 'Radio', 'Unknown', 'Visual novel', 'Web manga'], title='Count of sources by type of show')
-
-# graph 2
+# Graph #2
 graph_2 = px.strip(anime_df, x='score', y='rating', color='airing', custom_data=['title'], hover_data={'title': True})
 
-# Third graph
+# Graph #3
 graph_3 = px.violin(anime_df, y="score", x="airing", color="status", box=True,
                     points="all", hover_data=anime_df.columns)
 
-
-# Fourth graph
-# TODO add changes to visualize different 
-scrapped_df['Sales (Million)'] = scrapped_df['Sales (Million)'].astype('float')
-scrapped_df['Average Sales Per Volume (Million)'] = scrapped_df['Average Sales Per Volume (Million)'].astype('float') * 100
-
+# Graph #4
 graph_4 = px.scatter(scrapped_df, x = "score", y = "scored_by", size = "Sales (Million)", color = "source",
            hover_name = "title", log_x = True, size_max = 40)
 
-# fifth Graph
-# bin the score column into discrete intervals
-anime_df['score_bin'] = pd.cut(anime_df['score'], bins=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
-
-# create a pivot table to count the number of shows by rating and score interval
-rating_grading_df = anime_df.pivot_table(index='rating', columns='score_bin', values='title', aggfunc='count').reset_index()
-rating_grading_df.columns = ['rating', '0-1', '1-2', '2-3', '3-4', '4-5', '5-6', '6-7', '7-8', '8-9', '9-10']
-
+# Graph #5
+rating_grading_df = discrete_intervals(anime_df)
 graph_5 = px.bar(rating_grading_df, x='rating', y='5-6')
 
 app.layout = html.Div(children=[
     html.H1(children='Charts about different Animes and Mangas'),
-
-
 
     dcc.Graph(
         id='graph-1',
